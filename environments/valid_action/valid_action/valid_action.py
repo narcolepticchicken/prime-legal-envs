@@ -383,9 +383,40 @@ def load_taskset(config: vf.TasksetConfig | Mapping[str, object] | None = None) 
     )
 
 
-def load_environment(config: vf.EnvConfig | Mapping[str, object] | None = None) -> vf.Env:
+def _taskset_config_as_dict(taskset: object) -> dict[str, object]:
+    if taskset is None:
+        return {}
+    if isinstance(taskset, Mapping):
+        return dict(taskset)
+    if hasattr(taskset, "model_dump"):
+        return dict(taskset.model_dump())  # pydantic model
+    return dict(taskset)  # best effort
+
+
+def load_environment(
+    config: vf.EnvConfig | Mapping[str, object] | None = None,
+    **env_args: object,
+) -> vf.Env:
+    """Build the environment.
+
+    Two calling conventions are supported:
+
+    * structured — ``load_environment(config=<EnvConfig|Mapping>)`` (verifiers v1);
+    * bare env-args — ``load_environment(max_turns=5, difficulty="easy", ...)``,
+      which is how ``vf-eval -a '{...}'`` and the Prime hub's integration test
+      invoke it. The harness's generic ``max_turns`` maps onto this env's
+      per-rollout turn budget (``max_turns_override``); any other recognized
+      taskset field is passed straight through, and unknown kwargs are ignored.
+    """
     env_cfg = vf.EnvConfig(config)
-    taskset = load_taskset(config=env_cfg.taskset)
+    taskset_args = _taskset_config_as_dict(env_cfg.taskset)
+    if env_args:
+        extra = dict(env_args)
+        if "max_turns" in extra:
+            taskset_args["max_turns_override"] = int(extra.pop("max_turns"))  # type: ignore[arg-type]
+        allowed = set(ValidActionTasksetConfig.model_fields)
+        taskset_args.update({k: v for k, v in extra.items() if k in allowed})
+    taskset = load_taskset(config=taskset_args or None)
     return vf.Env(taskset=taskset)
 
 

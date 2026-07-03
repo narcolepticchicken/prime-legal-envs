@@ -2,7 +2,7 @@
 name = "valid-action"
 description = "Synthetic corporate-governance legal-agent environment (Prime Intellect)."
 tags = ["legal", "agent", "tool-use", "synthetic", "train", "eval"]
-version = "0.1.0"
+version = "0.1.1"
 requires-python = ">=3.10"
 dependencies = [
     "verifiers>=0.1.14",
